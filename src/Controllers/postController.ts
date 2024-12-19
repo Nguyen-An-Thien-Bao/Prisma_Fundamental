@@ -22,6 +22,30 @@ const createPost = async (req:Request, res:Response):Promise<void> => {
     }
 }
 
+interface postBody {
+    title: string
+    authorId: number
+}
+
+const updatePost = async ({params}: {params: {id: string}},req:Request, res:Response) => {
+    try{
+        const {title, authorId}: postBody = req.body
+        const data = await prisma.post.update({
+            where: {
+                id: +params.id
+            },
+            data: {
+                title: title
+            }
+        })
+        res.status(201).json(data)
+    }
+    catch(error){
+        console.log("Failed to update Post", error)
+        res.status(500).json({error: "Error from update Post"})
+    }
+}
+
 const paginationQuery = async (req:Request, res:Response):Promise<void> => {
     try{
         const {searchParams} = new URL(req.url)

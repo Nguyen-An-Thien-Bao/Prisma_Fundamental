@@ -10,8 +10,8 @@ async function main() {
         name: 'Bob',
         posts: {
           create: [
-            { title: 'Getting started with Prisma', publised: true },
-            { title: 'Understanding the Prisma Schema', publised: false },
+            { title: 'Getting started with Prisma', publised: true},
+            { title: 'Understanding the Prisma Schema', publised: false},
           ],
         },
       },
@@ -25,7 +25,7 @@ async function main() {
         name: 'Carol',
         posts: {
           create: [
-            { title: 'Prisma and PostgreSQL', publised: true },
+            { title: 'Prisma and PostgreSQL', publised: true},
             { title: 'Improving API performance', publised: true },
             { title: 'Next.js Integration Tips', publised: false },
           ],

@@ -1,0 +1,285 @@
+docs link: https://www.prisma.io/docs/orm/prisma-schema/overview/generators
+
+installation:
+npm init
+npm i --save-dev prisma typescript ts-node @types/node nodemon
+create ts.config, then paste this config => {
+    "compilerOptions": {
+        "sourceMap": true,
+        "outDir": "dist",
+        "strict": true,
+        "lib": ["esnext"],
+        "esModuleInterop": true
+    }
+}
+
+npx prisma init --datasource-provider <db_name> // instance npx prisma init --datasource-provider MySQL
+npm i @prisma/client
+--------
+
+cấu trúc của prisma DB url: DATABASE_URL="mysql://username:password@127.0.0.1:3306/database_name"
+ex: DATABASE_URL="mysql://root:123456@localhost:3307/prismaFundamental"
+
+npx prisma format : using to formatting the prisma schema
+
+npx prisma migrate dev --name init:
+
+prisma generate: Reads all above mentioned information from the Prisma schema to generate the correct data source client code (e.g. Prisma Client).
+prisma migrate dev: Reads the data sources and data model definition to create a new migration.
+
+trong file schema.prisma có dòng generator client: A generator determines which assets are created when you run the prisma generate command. The main property provider defines which Prisma Client (language specific) is created - currently, only prisma-client-js is available. Alternatively you can define any npm package that follows our generator specification. Additionally and optionally you can define a custom output folder for the generated assets with output.
+
+npm i @prisma/client -> then create a new file, and import the {PrismaClient}, the create a new instance (temporary called by X) from "PrismaClient" that we have imported
+
+NOTED: we will using X to make queries to our DB, and one more things is all PrismaClient methods return an instance of "PrismaPromise" which can executes when we call await(), then(), catch
+
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+const newUser = await prisma.user.create({
+  data: {
+    name: 'Alice',
+    email: 'alice@prisma.io',
+  },
+})
+
+const users = await prisma.user.findMany()
+
+with "prisma.user" that is we access the user table that we define in "schema.prisma" 
+
+
+trong file "schema.prisma", ta có 3 module con là:
+datasource: we have one and only 1 datasource, because this is kindly create the connection to the DB, like what we do in sequelize
+generator: we could have multiple generator instead of 1 only, we could you both prismaClient and some type generator for the GraphQL API
+model
+
+
+Sync DB
+after create a new table or alter table, 
+npx prisma db push
+npx prisma migrate dev --name  <mig_name>
+
+
+Prisma Studio: tương tự phpMyAdmin : npx prisma studio
+
+### Prisma Filter Query ###
+
+we will findout about how to use "where" in FindMany() method
+Inside "where", we have these fields to query:
+contains
+startsWith
+endsWith
+equals
+gt === greater
+gte === equal or greater
+in ==== 1 in array [a,b,c]
+lt === lower
+lte === equal or lower
+mode: intensitive or sensitive (for postgre only)
+not
+notIn
+
+- we can also using OR or NOT, AND to combine the condition
+vd:  where: {
+	OR: [
+		{
+			id: {
+				not: {
+					gt: 2
+				}
+			}
+		}, 
+
+		{
+		
+			name: {
+				startsWith: "A"
+			}
+		}
+	]
+
+} 
+
+### Relation Filters
+One-to-many and Many-to-many:
++ every: All, it mean each value must satisfied the condition, instance: give me the user that all the posts have been publised
++ some: Some of the value satisfied the condition, instacnce: give me the user that some of the posts be publised
++ none: No value satisfied the condition
+
+
+Many-to-one and One-to-One
++ is: 
++ isNot
+vd: where:{
+	author: {
+		isNot: {
+			name: "Alex",
+		}
+	}
+}
+
+where: {
+	author: {
+		is: {
+			name: "Alex"
+		},
+		isNot: {
+			email: {
+				startsWith: "A"
+			}
+		}
+	}
+}
+
+
+### Nested Queries
+ta có thể sử dung includes để nested queries, kiểu query những bản có relation với nhau, vd: user and profile, user and posts
+noted: includes is the same level with "where"
+
+vd: includes: {
+	author: true	
+}
+
+
+### Selecting Specific Fields
+- we can use "select" to specifying the field that we want to return, select is the same level with "where, includes"
+instance: select post title from Post and author name in User
+select : {
+	title: true,
+	author: {
+		select: {
+			name: true
+		}
+	}
+}
+
+
+### Aggregation Functions
+- bao gồm: count, min, max, avg, some
+const data = await prisma.post.aggregate({
+      _avg: {
+        likes_num: true
+      },
+      where: {
+        authorId: 2
+      }
+    })
+
+
+### GroupBy
+const data = await prisma.post.groupBy({
+      by: ["authorId"],
+      _sum: {
+        likes_num: true
+      },
+      _count: {
+        likes_num: true
+      },
+      _min:{
+        likes_num: true
+      },
+    })
+    res.status(201).json(data)
+
+### Sorting Query Result (orderBy)
+const posts = await prisma.post.findMany({
+      orderBy: {
+        likes_num: "asc"
+      },
+    })
+    res.status(201).json(posts)
+
+asc: tang dần
+desc: giảm dần
+
+### Pagination
+we have 2 method to approach pagination in Prisma: cursor and offset
+with offset approach: we use "skip" and "take" attribute -> take : take how many item, skip: skip how many item
+by using offset approach, we will retrieve page number from query string, and use it as parameter for the query function
+
+instance:
+const paginationQuery = async (req:Request, res:Response):Promise<void> => {
+    try{
+        const {searchParams} = new URL(req.url)
+        const pgnum = +(searchParams.get("pgnum")??0)
+        const pgsize = +(searchParams.get("pgsize")??10)
+        const posts = await prisma.post.findMany({
+            skip: pgnum * pgsize,
+            take: pgsize
+        })
+        res.status(201).json(posts)
+    }
+    catch(error){
+        console.log("Failed to get data (Pagination)", error)
+        res.status(500).json({error: "Failed to get data (Pagination)"})
+    }
+}
+
+Performance: cursor is better than offset some how
+
+
+### Create (Insert data to DB)
+await prisma.user.upsert({
+      where: { email: 'bob@prisma.io' },
+      update: {},
+      create: {
+        email: 'bob@prisma.io',
+        name: 'Bob',
+        posts: {
+          create: [
+            { title: 'Getting started with Prisma', publised: true, categories: {connect: [{id: 1}, {id: 2}]}},
+            { title: 'Understanding the Prisma Schema', publised: false, categories: {connect: [{id: 2}]} },
+          ],
+        },
+      },
+    }),
+
+// connnect đc sử dung cho quan hệ one-to-many và many-to-many
+as it name, the function of this "connect" is create a association between table and table
+
+beside "connect", we also have "connectOrCreate". The function as it name
+
+
+### Cascading Actions
+trong model, với mỗi relation, ta có thể đặt attribute onDelete: Cascade và onUpdate: Cascade để có thể bật Cascade mode khi delete hoặc update
+
+### SkipDuplicates
+- trong createMany(), ta có thể them attribute "skipDuplicates:true" to remove the duplicate value before create
+
+### Update Request In Right Ways with Prisma and Typescript
+interface postBody {
+    title: string
+    authorId: number
+}
+
+const updatePost = async ({params}: {params: {id: string}},req:Request, res:Response) => {
+    try{
+        const {title, authorId}: postBody = req.body
+        const data = await prisma.post.update({
+            where: {
+                id: +params.id
+            },
+            data: {
+                title: title
+            }
+        })
+        res.status(201).json(data)
+    }
+    catch(error){
+        console.log("Failed to update Post", error)
+        res.status(500).json({error: "Error from update Post"})
+    }
+}
+
+// với delete ta chỉ cần params là okela
+
+### Transaction
+
+- transform 2 or 3 or many transaction into a single one, if one of thems fail, all gonna fail, and the DB will revert to the status before starting the transaction
+
+- ví dụ kiểu ta muốn tao cả đồng lúc cả user lẫn profile, ta có thể sửđụng transaction
+
+const user = await prisma.user.create({})
+const profile = await.profile.create({})
+
+const result = await prisma.$transaction([user, profile])

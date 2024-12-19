@@ -27,6 +27,19 @@ const getAllUser = async (req:Request, res:Response):Promise<void> => {
     }
 }
 
+const deleteUser = async ({params}:{params: {id:string}},req:Request, res:Response):Promise<void> => {
+  try{
+      await prisma.user.delete({
+        where: {
+          id: +params.id
+        }
+      })
+  }catch(error){
+    console.log("Failed to Delete User", error)
+    res.status(500).json({error: "Failed to Detelte User"})
+  }
+}
+
 const test = async (req: Request, res:Response):Promise<void> => {
   // try{
   //   const data = await prisma.profile.findMany({
@@ -92,4 +105,4 @@ const test = async (req: Request, res:Response):Promise<void> => {
 }
 
 
-export {createUser, getAllUser, test}
+export {createUser, getAllUser, test, deleteUser}
